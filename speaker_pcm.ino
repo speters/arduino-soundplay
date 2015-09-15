@@ -48,7 +48,7 @@ uint8_t soundqueuecount = 0, soundqueueindex = 0;
 #define debugprint(i)	{}
 #endif // DEBUG
 
-void stopPlayback()
+void soundplayer_stop()
 {
 	// disable interrupt
 	TIMSK2 &= ~(_BV(TOIE2));
@@ -74,7 +74,7 @@ void finishplay_gotoprev()
 	else
 	{
 		soundqueueindex = 0;
-		stopPlayback();
+		soundplayer_stop();
 	}
 }
 
@@ -161,7 +161,7 @@ ISR(TIMER2_OVF_vect)
 	++soundsample;
 }
 
-void setupPlayback()
+void soundplayer_setup()
 {
 	pinMode(3, OUTPUT);
 
@@ -179,7 +179,7 @@ void setupPlayback()
 	OCR2A = MAXCNTRELOAD;
 }
 
-uint8_t startPlayback(uint16_t sounddata_p, uint16_t soundlen, uint8_t speed,
+uint8_t soundplayer_play(uint16_t sounddata_p, uint16_t soundlen, uint8_t speed,
 		void (*finishfunc)(uint8_t), uint8_t finishparam)
 {
 	TIMSK2 &= ~(_BV(TOIE2));
@@ -223,18 +223,35 @@ uint8_t startPlayback(uint16_t sounddata_p, uint16_t soundlen, uint8_t speed,
 	return soundqueueindex;
 }
 
+uint8_t soundplayer_play(uint16_t sounddata_p, uint16_t soundlen)
+{
+	return soundplayer_play(sounddata_p, soundlen, (uint8_t) MAXCNTRELOAD, finishplay_gotoprev, 0);
+}
+
+uint8_t soundplayer_play_repeat(uint16_t sounddata_p, uint16_t soundlen, uint8_t repeat)
+{
+	return soundplayer_play(sounddata_p, soundlen, (uint8_t) MAXCNTRELOAD, finishplay_repeat, repeat);
+}
+
+uint8_t soundplayer_play_ds(uint16_t sounddata_p, uint16_t soundlen, uint8_t ds)
+{
+	return soundplayer_play(sounddata_p, soundlen, (uint8_t) MAXCNTRELOAD, finishplay_durationds, ds);
+}
+
 uint8_t backgroundsoundindex, i;
 void setup()
 {
 #ifdef DEBUG
 	Serial.begin(115200);
 #endif
-	setupPlayback();
-	backgroundsoundindex = startPlayback((uint16_t) &sound_diesel_data,
+	pinMode(A1, INPUT);
+
+	soundplayer_setup();
+	backgroundsoundindex = soundplayer_play((uint16_t) &sound_diesel_data,
 			sound_diesel_length, MAXCNTRELOAD, finishplay_repeat, 0);
 	debugprint(backgroundsoundindex);
 	delay(2000);
-	i = startPlayback((uint16_t) &sound_hupe_data, sound_hupe_length,
+	i = soundplayer_play((uint16_t) &sound_hupe_data, sound_hupe_length,
 			MAXCNTRELOAD, finishplay_durationds, 30);
 	debugprint(i);
 	// delay(3000);
@@ -250,6 +267,10 @@ void loop()
 
 	while (true)
 	{
+		if (digitalRead(A2))
+		{
+			soundplayer_play_ds((uint16_t) &sound_hupe_data, sound_hupe_length, 20);
+		}
 		if (soundqueueindex == backgroundsoundindex)
 		{
 			analogVal = analogRead(A7);
