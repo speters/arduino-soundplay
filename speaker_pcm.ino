@@ -74,6 +74,18 @@
 volatile uint16_t sample = 0;
 uint16_t analogVal;
 
+struct soundqueue_item_t {
+	uint8_t* sounddata_p;
+	uint16_t soundlen;
+	uint16_t sample;
+	uint8_t speed;
+	void (*finishfunc)();
+};
+
+#define SOUNDQUEUEDEPTH 2
+struct soundqueue_item_t soundqueue[SOUNDQUEUEDEPTH];
+uint8_t soundqueuecount = 0, soundqueueindex = 0;
+
 void finishplay_gotoprev()
 {
 	if (soundqueuecount > 0)
@@ -90,18 +102,6 @@ void stopPlayback()
 	soundqueuecount = 0;
     digitalWrite(3, LOW);
 }
-
-struct soundqueue_item_t {
-	uint8_t* sounddata_p;
-	uint16_t soundlen = 0;
-	uint16_t sample = 0;
-	uint8_t speed = MAXCNTRELOAD;
-	void (*finishfunc)() = &stopPlayback;
-};
-
-#define SOUNDQUEUEDEPTH 2
-struct soundqueue_item_t soundqueue[SOUNDQUEUEDEPTH];
-uint8_t soundqueuecount = 0, soundqueueindex = 0;
 
 #ifndef NO_OVERSAMPLING
 uint8_t nth = 0;
@@ -120,11 +120,11 @@ ISR(TIMER2_OVF_vect){
 	nth = 7;
 #endif // NO_OVERSAMPLING
 
-    if (sample >= sounddata_length) {
-    	finishplayfunc();
+    if (sample >= soundqueue[soundqueueindex].soundlen) {
+    	soundqueue[soundqueueindex].finishfunc();
     }
 
-    OCR2B = pgm_read_byte(&sounddata_data[sample]);
+    OCR2B = pgm_read_byte(soundqueue[soundqueueindex].sounddata_p[sample]);
     ++sample;
 }
 
@@ -149,7 +149,7 @@ void setupPlayback()
 	OCR2A = MAXCNTRELOAD;
 }
 
-uint8_t startPlayback(uint8_t* sounddata_p, uint16_t soundlen, uint8_t speed, void (*finishfunc)())
+void startPlayback(uint8_t* sounddata_p, uint16_t soundlen, uint8_t speed, void (*finishfunc)())
 {
 	uint8_t soundqueueoldindex;
 
@@ -189,7 +189,7 @@ uint8_t startPlayback(uint8_t* sounddata_p, uint16_t soundlen, uint8_t speed, vo
     sample = 0;
     sei();
 
-    return soundqueueindex;
+    //return soundqueueindex;
 }
 
 void finishplay_repeat()
@@ -201,8 +201,7 @@ void finishplay_repeat()
 void setup()
 {
 	setupPlayback();
-    startPlayback();
-    finishplayfunc = &finishplay_gotoprev;
+    startPlayback((uint8_t*)&sound_diesel_data, sound_diesel_length, MAXCNTRELOAD, finishplay_repeat);
 }
 
 void loop()
