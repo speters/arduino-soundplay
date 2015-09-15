@@ -68,47 +68,99 @@
 #endif
 
 
-// #include "sounddata.h"
-#include "b.h"
+#include "sounddata.h"
+#include "sound_diesel.h"
+#include "sound_hupe.h"
 
 volatile uint16_t sample = 0;
 uint16_t analogVal;
 
 struct soundqueue_item_t {
-	uint8_t* sounddata_p;
+	uint16_t sounddata_p;
 	uint16_t soundlen;
 	uint16_t sample;
 	uint8_t speed;
-	void (*finishfunc)();
+	void (*finishfunc)(uint8_t);
+	uint8_t finishparam;
 };
 
 #define SOUNDQUEUEDEPTH 2
 struct soundqueue_item_t soundqueue[SOUNDQUEUEDEPTH];
 uint8_t soundqueuecount = 0, soundqueueindex = 0;
 
+void stopPlayback()
+{
+    // Disable interrupt.
+	TIMSK2  &= ~(_BV(TOIE2));
+	soundqueuecount = 0;
+    digitalWrite(3, LOW);
+}
+
 void finishplay_gotoprev()
 {
 	if (soundqueuecount > 0)
 	{
 		--soundqueuecount;
+		if (soundqueuecount == 0)
+		{
+			soundqueueindex = 0;
+		}
+		else
+		{
+			soundqueueindex = soundqueuecount - 1;
+		}
+	}
+	else
+	{
+		soundqueueindex = 0;
+		stopPlayback();
+	}
+}
+
+void finishplay_durationds(uint8_t ds) // finish after ds/10 sec
+{
+	static uint32_t ms = 0;
+	if (ms == 0)
+	{
+		ms = millis() + (ds * 100);
+	}
+	else
+	{
+		if (millis() > ms)
+		{
+			ms = 0;
+			finishplay_gotoprev();
+		}
+	}
+}
+
+void finishplay_repeat(uint8_t repeat)
+{
+	static uint8_t r = 0;
+	if (repeat == 0)
+	{
+		r = 0;
+		// return;
+	}
+	else
+	{
+		r++;
+		if (r >= repeat)
+		{
+			r = 0;
+			finishplay_gotoprev();
+		}
 	}
 }
 
 
-void stopPlayback()
-{
-    // Disable playback per-sample interrupt.
-	TIMSK2  &= ~(_BV(OCIE2B) );
-	soundqueuecount = 0;
-    digitalWrite(3, LOW);
-}
 
 #ifndef NO_OVERSAMPLING
 uint8_t nth = 0;
 #endif // NO_OVERSAMPLING
 uint8_t repeat = 1;
 
-void (*finishplayfunc)();
+//void (*finishplayfunc)(uint8_t);
 
 ISR(TIMER2_OVF_vect){
 #ifndef NO_OVERSAMPLING
@@ -121,10 +173,11 @@ ISR(TIMER2_OVF_vect){
 #endif // NO_OVERSAMPLING
 
     if (sample >= soundqueue[soundqueueindex].soundlen) {
-    	soundqueue[soundqueueindex].finishfunc();
+    	sample = 0;
+    	soundqueue[soundqueueindex].finishfunc(soundqueue[soundqueueindex].finishparam);
     }
 
-    OCR2B = pgm_read_byte(soundqueue[soundqueueindex].sounddata_p[sample]);
+    OCR2B = pgm_read_byte(soundqueue[soundqueueindex].sounddata_p + sample);
     ++sample;
 }
 
@@ -149,7 +202,7 @@ void setupPlayback()
 	OCR2A = MAXCNTRELOAD;
 }
 
-void startPlayback(uint8_t* sounddata_p, uint16_t soundlen, uint8_t speed, void (*finishfunc)())
+uint8_t startPlayback(uint16_t sounddata_p, uint16_t soundlen, uint8_t speed, void (*finishfunc)(uint8_t), uint8_t finishparam)
 {
 	uint8_t soundqueueoldindex;
 
@@ -166,17 +219,18 @@ void startPlayback(uint8_t* sounddata_p, uint16_t soundlen, uint8_t speed, void 
         	soundqueuecount = SOUNDQUEUEDEPTH;
         }
     	soundqueueindex = soundqueuecount - 1;
-    	soundqueueoldindex = soundqueueindex -1;
-
-        // save current speed
-        soundqueue[soundqueueoldindex].speed = OCR2A;
-        // save current position
-        soundqueue[soundqueueoldindex].sample = sample;
+    	if (soundqueueindex > 1 )
+    	{
+			// save current speed
+			soundqueue[soundqueueindex - 1].speed = OCR2A;
+			// save current position
+			soundqueue[soundqueueindex - 1].sample = sample;
+    	}
     }
     else
     {
+    	soundqueuecount = 1;
     	soundqueueindex = 0;
-    	soundqueueoldindex = 0;
     }
 
     soundqueue[soundqueueindex].sounddata_p = sounddata_p;
@@ -184,12 +238,13 @@ void startPlayback(uint8_t* sounddata_p, uint16_t soundlen, uint8_t speed, void 
     soundqueue[soundqueueindex].speed = speed;
     soundqueue[soundqueueindex].sample = 0;
     soundqueue[soundqueueindex].finishfunc = finishfunc;
+    soundqueue[soundqueueindex].finishparam = finishparam;
 
     TIMSK2 = _BV(TOIE2);
     sample = 0;
     sei();
 
-    //return soundqueueindex;
+    return soundqueueindex;
 }
 
 void finishplay_repeat()
@@ -201,7 +256,12 @@ void finishplay_repeat()
 void setup()
 {
 	setupPlayback();
-    startPlayback((uint8_t*)&sound_diesel_data, sound_diesel_length, MAXCNTRELOAD, finishplay_repeat);
+    startPlayback((uint16_t) &sound_diesel_data, sound_diesel_length, MAXCNTRELOAD, finishplay_repeat, 0);
+    delay(2000);
+    startPlayback((uint16_t) &sound_hupe_data, sound_hupe_length, MAXCNTRELOAD, finishplay_durationds, 30);
+    // delay(3000);
+    //startPlayback((uint16_t) &sounddata_data, sounddata_length, MAXCNTRELOAD, finishplay_hupe);
+    //delay(1000);
 }
 
 void loop()
