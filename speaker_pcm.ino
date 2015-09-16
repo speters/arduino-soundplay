@@ -15,7 +15,7 @@
 #define SOUNDQUEUEDEPTH 2
 #endif // SOUNDQUEUEDEPTH
 
-#define ___AVR_ATmega328P__
+//#define ___AVR_ATmega328P__
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
@@ -130,9 +130,7 @@ void finishplay_repeat(uint8_t repeat)
 	}
 }
 
-#ifndef NO_OVERSAMPLING
 uint8_t nth = 0;
-#endif // NO_OVERSAMPLING
 
 ISR(TIMER2_OVF_vect)
 {
@@ -143,22 +141,24 @@ ISR(TIMER2_OVF_vect)
 		{
 			OCR2A = soundqueue[soundqueueindex].speed;
 		}
-		--nth;
-		return;
+		--nth;;
 	}
-	nth = 7;
+	else
 #endif // NO_OVERSAMPLING
-
-	if (soundsample >= soundqueue[soundqueueindex].soundlen)
 	{
-		soundsample = 0;
-		soundqueue[soundqueueindex].finishfunc(
-				soundqueue[soundqueueindex].finishparam);
-	}
+		nth = 7;
 
-	OCR2B = pgm_read_byte(
-			soundqueue[soundqueueindex].sounddata_p + soundsample);
-	++soundsample;
+		if (soundsample >= soundqueue[soundqueueindex].soundlen)
+		{
+			soundsample = 0;
+			soundqueue[soundqueueindex].finishfunc(
+					soundqueue[soundqueueindex].finishparam);
+		}
+
+		OCR2B = pgm_read_byte(
+				soundqueue[soundqueueindex].sounddata_p + soundsample);
+		++soundsample;
+	}
 }
 
 void soundplayer_setup()
