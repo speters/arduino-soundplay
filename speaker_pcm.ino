@@ -8,9 +8,6 @@
 // if sample reate is not 7843Hz, then adjust it here:
 // #define SAMPLE_RATE 8000
 
-// if interrupt load is too high, comment out to go without oversampling
-// #define NO_OVERSAMPLING
-
 #ifndef SOUNDQUEUEDEPTH
 #define SOUNDQUEUEDEPTH 2
 #endif // SOUNDQUEUEDEPTH
@@ -134,7 +131,6 @@ uint8_t nth = 0;
 
 ISR(TIMER2_OVF_vect)
 {
-#ifndef NO_OVERSAMPLING
 	if (nth > 0)
 	{
 		if (nth == 7)
@@ -144,7 +140,6 @@ ISR(TIMER2_OVF_vect)
 		--nth;;
 	}
 	else
-#endif // NO_OVERSAMPLING
 	{
 		nth = 7;
 
@@ -170,11 +165,7 @@ void soundplayer_setup()
 
 	TCCR2A = _BV(COM2B1) | _BV(WGM21) | _BV(WGM20);
 
-#ifndef NO_OVERSAMPLING
 	TCCR2B = _BV(WGM22) | _BV(CS20);	// No prescaler
-#else
-			TCCR2B = _BV(WGM22)| _BV(CS21);	// /8 prescaler
-#endif // NO_OVERSAMPLING
 
 	OCR2A = MAXCNTRELOAD;
 }
