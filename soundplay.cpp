@@ -1,56 +1,13 @@
-#define DEBUG
+//#define __AVR_ATmega328P__
+
 #include <stdint.h>
-// sample tables made with wav2c https://github.com/olleolleolle/wav2c , must be in 8bit mono format
-#include "sound_crankup.h"
-#include "sound_diesel.h"
-#include "sound_hupe.h"
 
-// if sample reate is not 7843Hz, then adjust it here:
-// #define SAMPLE_RATE 8000
-
-#ifndef SOUNDQUEUEDEPTH
-#define SOUNDQUEUEDEPTH 2
-#endif // SOUNDQUEUEDEPTH
-
-//#define ___AVR_ATmega328P__
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <avr/pgmspace.h>
-#include <Arduino.h>
-
-#define SOUNDFORMAT_BTC // 1-bit sound (see http://www.romanblack.com/picsound.htm)
-
-#ifdef SAMPLE_RATE
-#define MAXCNTRELOAD F_CPU / 255 / 8 / SAMPLE_RATE
-#else
-#ifndef SOUNDFORMAT_BTC
-#define MAXCNTRELOAD 255
-#else // SOUNDFORMAT_BTC
-#define MAXCNTRELOAD 127
-#endif // SOUNDFORMAT_BTC
-#endif
-
-volatile uint16_t samplepos = 0;
-volatile uint8_t sound_is_playing;
-
-struct soundqueue_item_t
-{
-	uint16_t sounddata_p;
-	uint16_t soundlen;
-	uint16_t samplepos;
-	uint8_t speed;
-	void (*finishfunc)(uint8_t);
-	uint8_t finishparam;
-};
+#include "soundplay.h"
 
 struct soundqueue_item_t soundqueue[SOUNDQUEUEDEPTH];
 uint8_t soundqueuecount = 0, soundqueueindex = 0;
-
-#ifdef DEBUG
-#define debugprint(i) Serial.print(#i": "); Serial.println(i);
-#else // DEBUG
-#define debugprint(i)	{}
-#endif // DEBUG
+volatile uint16_t samplepos = 0;
+volatile uint8_t sound_is_playing;
 
 void soundplayer_stop()
 {
@@ -294,52 +251,3 @@ uint8_t soundplayer_play_ds(uint16_t sounddata_p, uint16_t soundlen, uint8_t ds)
 			finishplay_durationds, ds);
 }
 
-uint8_t backgroundsoundindex, i;
-void setup()
-{
-#ifdef DEBUG
-	Serial.begin(115200);
-#endif
-	pinMode(A1, INPUT);
-
-	soundplayer_setup();
-
-	backgroundsoundindex = soundplayer_play((uint16_t) &sound_diesel_data,
-			sound_diesel_length, MAXCNTRELOAD, finishplay_repeat, 0);
-
-	soundplayer_play_repeat((uint16_t) &sound_crankup_data,
-			sound_crankup_length, 3);
-	//soundplayer_play((uint16_t) &sound_crankup_data, sound_crankup_length, MAXCNTRELOAD>>1, finishplay_repeat, 3);
-	/*
-	 debugprint(backgroundsoundindex);
-	 delay(2000);
-	 i = soundplayer_play((uint16_t) &sound_hupe_data, sound_hupe_length,
-	 MAXCNTRELOAD, finishplay_durationds, 30);
-	 debugprint(i);
-	 // delay(3000);
-	 //startPlayback((uint16_t) &sounddata_data, sounddata_length, MAXCNTRELOAD, finishplay_hupe);
-	 //delay(1000);
-	 delay(4000);
-	 debugprint(soundqueueindex);
-	 */
-}
-
-void loop()
-{
-	uint16_t analogVal;
-
-	while (true)
-	{
-		if (digitalRead (A2))
-		{
-			soundplayer_play_ds((uint16_t) &sound_hupe_data, sound_hupe_length,
-					20);
-		}
-		if (soundqueueindex == backgroundsoundindex)
-		{
-			analogVal = analogRead(A7);
-			soundqueue[backgroundsoundindex].speed = map(analogVal, 0, 1023,
-			MAXCNTRELOAD - (255 - 170), MAXCNTRELOAD);
-		}
-	}
-}
