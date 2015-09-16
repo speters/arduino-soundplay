@@ -1,7 +1,7 @@
 #define DEBUG
 #include <stdint.h>
 // sample tables made with wav2c https://github.com/olleolleolle/wav2c , must be in 8bit ~8kHz format
-#include "sounddata.h"
+#include "sound_crankup.h"
 #include "sound_diesel.h"
 #include "sound_hupe.h"
 
@@ -247,8 +247,13 @@ void setup()
 	pinMode(A1, INPUT);
 
 	soundplayer_setup();
+
 	backgroundsoundindex = soundplayer_play((uint16_t) &sound_diesel_data,
 			sound_diesel_length, MAXCNTRELOAD, finishplay_repeat, 0);
+
+	soundplayer_play_repeat((uint16_t) &sound_crankup_data, sound_crankup_length, 3);
+	//soundplayer_play((uint16_t) &sound_crankup_data, sound_crankup_length, MAXCNTRELOAD>>1, finishplay_repeat, 3);
+/*
 	debugprint(backgroundsoundindex);
 	delay(2000);
 	i = soundplayer_play((uint16_t) &sound_hupe_data, sound_hupe_length,
@@ -259,6 +264,7 @@ void setup()
 	//delay(1000);
 	delay(4000);
 	debugprint(soundqueueindex);
+*/
 }
 
 void loop()
