@@ -170,16 +170,17 @@ ISR(TIMER2_OVF_vect)
 			}
 		}
 
+		// TODO: 1.5bit implementation using two pins
 		// toggle single pin according to current high bit
 		if (sample & 0x80)
 		{
 			// PORTD |= (1 << PD3);
-			digitalWrite(3, HIGH);
+			digitalWrite(3, HIGH); // TODO: check if this is fast enough
 		}
 		else
 		{
 			// PORTD &= ~(1 << PD3);
-			digitalWrite(3, LOW);
+			digitalWrite(3, LOW); // TODO: check if this is fast enough
 		}
 
 		sample <<= 1;
