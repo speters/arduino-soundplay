@@ -1,6 +1,21 @@
 //#define __AVR_ATmega328P__
 
 #include <stdint.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <avr/pgmspace.h>
+#ifndef  __AVR_ATmega328P__
+#error "This code currently only runs on ATmega328	"
+#endif
+#include <Arduino.h>
+
+#ifdef SOUNDFORMAT_PCM
+#undef SOUNDFORMAT_BTC
+#else
+#ifndef SOUNDFORMAT_BTC
+#error "Must define a sound format (SOUNDFORMAT_PCM|SOUNDFORMAT_BTC) in your Makefile"
+#endif // SOUNDFORMAT_BTC
+#endif // SOUNDFORMAT_PCM
 
 #include "soundplay.h"
 
@@ -125,8 +140,8 @@ ISR(TIMER2_OVF_vect)
 	}
 }
 #else // SOUNDFORMAT_BTC
-uint8_t bitpos;
-uint8_t sample;
+volatile uint8_t bitpos = 0;
+volatile uint8_t sample;
 
 ISR(TIMER2_OVF_vect)
 {
@@ -142,15 +157,17 @@ ISR(TIMER2_OVF_vect)
 				sample = pgm_read_byte(
 						soundqueue[soundqueueindex].sounddata_p + samplepos);
 				samplepos++;
+				bitpos = 0;
 			}
 			else
 			{
 				soundqueue[soundqueueindex].finishfunc(
 						soundqueue[soundqueueindex].finishparam);
+				bitpos = 0;
+				samplepos = 0;
 				goto TIMER2_OVF_vect_SOUNDSTUFF_DONE;
 				// TODO: Think about cleaner vs. shorter code...
 			}
-			bitpos = 0;
 		}
 
 		// toggle single pin according to current high bit
@@ -164,6 +181,8 @@ ISR(TIMER2_OVF_vect)
 			// PORTD &= ~(1 << PD3);
 			digitalWrite(3, LOW);
 		}
+
+		sample <<= 1;
 	}
 	TIMER2_OVF_vect_SOUNDSTUFF_DONE: ;
 }

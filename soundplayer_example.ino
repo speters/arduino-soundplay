@@ -1,14 +1,22 @@
 #define DEBUG
-#define ___AVR_ATmega328P__
 #include <Arduino.h>
 
+//#define SAMPLE_RATE 16000
+
 #include "soundplay.h"
+
+// 1-bit sound (see http://www.romanblack.com/picsound.htm
+
+#ifndef SOUNDFORMAT_BTC
 // sample tables made with wav2c https://github.com/olleolleolle/wav2c , must be in 8bit mono format
 #include "sound_crankup.h"
 #include "sound_diesel.h"
 #include "sound_hupe.h"
-
-//#define SOUNDFORMAT_BTC // 1-bit sound (see http://www.romanblack.com/picsound.htm)
+#else // SOUNDFORMAT_BTC
+#include "sound_crankup_btc.h"
+#include "sound_diesel_btc.h"
+#include "sound_horn_btc.h"
+#endif // SOUNDFORMAT_BTC
 
 uint8_t backgroundsoundindex, i;
 void setup()
@@ -20,6 +28,7 @@ void setup()
 
 	soundplayer_setup();
 
+#ifndef SOUNDFORMAT_BTC
 	backgroundsoundindex = soundplayer_play((uint16_t) &sound_diesel_data,
 			sound_diesel_length, MAXCNTRELOAD, finishplay_repeat, 0);
 
@@ -38,6 +47,15 @@ void setup()
 	 delay(4000);
 	 debugprint(soundqueueindex);
 	 */
+#else // SOUNDFORMAT_BTC
+	backgroundsoundindex = soundplayer_play((uint16_t) &sound_diesel_btc,
+				sound_diesel_btc_len, MAXCNTRELOAD, finishplay_repeat, 0);
+	delay(3000);
+	/*soundplayer_play((uint16_t) &sound_crankup_btc,
+			sound_crankup_btc_len);
+	delay(3000);
+	*/
+	#endif // SOUNDFORMAT_BTC
 }
 
 void loop()
@@ -48,14 +66,20 @@ void loop()
 	{
 		if (digitalRead (A2))
 		{
+#ifndef SOUNDFORMAT_BTC
 			soundplayer_play_ds((uint16_t) &sound_hupe_data, sound_hupe_length,
 					20);
+#else // SOUNDFORMAT_BTC
+			soundplayer_play_ds((uint16_t) &sound_horn_btc, sound_horn_btc_len,
+					20);
+#endif // SOUNDFORMAT_BTC
 		}
 		if (soundqueueindex == backgroundsoundindex)
 		{
 			analogVal = analogRead(A7);
 			soundqueue[backgroundsoundindex].speed = map(analogVal, 0, 1023,
 			MAXCNTRELOAD - (255 - 170), MAXCNTRELOAD);
+			debugprint(soundqueue[backgroundsoundindex].speed );
 		}
 	}
 }

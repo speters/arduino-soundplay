@@ -14,20 +14,13 @@
 #define MAXCNTRELOAD F_CPU / 255 / 8 / SAMPLE_RATE
 #else
 #ifndef SOUNDFORMAT_BTC
-#define MAXCNTRELOAD 255
+#define MAXCNTRELOAD 255	// rate of ~8kHz
 #else // SOUNDFORMAT_BTC
-#define MAXCNTRELOAD 127
+#define MAXCNTRELOAD 127	// rate of ~16kHz
 #endif // SOUNDFORMAT_BTC
 #endif
 
 #include <stdint.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <avr/pgmspace.h>
-#ifndef  __AVR_ATmega328P__
-#error "This code currently only runs on ATmega328	"
-#endif
-#include <Arduino.h>
 
 extern volatile uint16_t samplepos;
 extern volatile uint8_t sound_is_playing;
