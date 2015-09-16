@@ -173,7 +173,7 @@ void soundplayer_setup()
 {
 	pinMode(3, OUTPUT);
 
-	// use internal clock (datasheet p.160)
+	// setup clock
 	ASSR &= ~(_BV(EXCLK) | _BV(AS2));
 
 #ifndef SOUNDFORMAT_BTC
