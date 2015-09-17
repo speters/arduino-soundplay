@@ -1,23 +1,21 @@
 #ifndef _SOUNDPLAY_H_
 #define _SOUNDPLAY_H_
 
-// #define SOUNDFORMAT_BTC // 1-bit sound (see http://www.romanblack.com/picsound.htm)
 // #define DEBUG
-// if sample reate is not 7843Hz, then adjust it here:
-// #define SAMPLE_RATE 8000
 
 #ifndef SOUNDQUEUEDEPTH
 #define SOUNDQUEUEDEPTH 2
 #endif // SOUNDQUEUEDEPTH
 
+#define SOUND_FORMAT_BTC 1	// 1-bit sound (see http://www.romanblack.com/picsound.htm)
+#define SOUND_FORMAT_BTC2 2	// 1.5bit / 2-pin BTC sound
+#define SOUND_FORMAT_PCM 3 	// standard 8kHz, 8bit PCM
+
+
 #ifdef SAMPLE_RATE
 #define MAXCNTRELOAD F_CPU / 255 / 8 / SAMPLE_RATE
 #else
-#ifndef SOUNDFORMAT_BTC
-#define MAXCNTRELOAD 255	// rate of ~8kHz
-#else // SOUNDFORMAT_BTC
-#define MAXCNTRELOAD 127	// rate of ~16kHz
-#endif // SOUNDFORMAT_BTC
+#define MAXCNTRELOAD 255
 #endif
 
 #include <stdint.h>
@@ -29,10 +27,11 @@ struct soundqueue_item_t
 {
 	uint16_t sounddata_p;
 	uint16_t soundlen;
-	uint16_t samplepos;
+	uint8_t format;
 	uint8_t speed;
 	void (*finishfunc)(uint8_t);
 	uint8_t finishparam;
+	uint16_t samplepos;
 };
 
 extern struct soundqueue_item_t soundqueue[SOUNDQUEUEDEPTH];
@@ -58,14 +57,14 @@ void finishplay_repeat(uint8_t repeat);
 
 void soundplayer_setup();
 
-uint8_t soundplayer_play(uint16_t sounddata_p, uint16_t soundlen, uint8_t speed,
+uint8_t soundplayer_play(uint16_t sounddata_p, uint16_t soundlen, uint8_t format, uint8_t speed,
 		void (*finishfunc)(uint8_t), uint8_t finishparam);
 
-uint8_t soundplayer_play(uint16_t sounddata_p, uint16_t soundlen);
+uint8_t soundplayer_play(uint16_t sounddata_p, uint16_t soundlen, uint8_t format);
 
-uint8_t soundplayer_play_repeat(uint16_t sounddata_p, uint16_t soundlen,
+uint8_t soundplayer_play_repeat(uint16_t sounddata_p, uint16_t soundlen, uint8_t format,
 		uint8_t repeat);
 
-uint8_t soundplayer_play_ds(uint16_t sounddata_p, uint16_t soundlen, uint8_t ds);
+uint8_t soundplayer_play_ds(uint16_t sounddata_p, uint16_t soundlen, uint8_t format, uint8_t ds);
 
 #endif // _SOUNDPLAY_H_
